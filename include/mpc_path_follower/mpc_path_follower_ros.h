@@ -127,6 +127,7 @@ namespace mpc_local_planner {
         base_local_planner::LocalPlannerUtil planner_util_;
 
         Eigen::Vector3f vel;
+        const float  DT;
         MPC_Path_Follower mpc_solver;
 
     };
