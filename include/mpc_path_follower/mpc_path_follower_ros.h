@@ -19,17 +19,17 @@
 #include <base_local_planner/odometry_helper_ros.h>
 #include <base_local_planner/goal_functions.h>
 #include <base_local_planner/latched_stop_rotate_controller.h>
-namespace mpc_local_planner {
-    class Mpc_Path_Follower_Ros : public nav_core::BaseLocalPlanner{
+namespace mpc_path_follower {
+    class MpcPathFollowerRos : public nav_core::BaseLocalPlanner{
     public:
         /**
          * @brief  Constructor for mpc path follower wrapper
          */
-        Mpc_Path_Follower_Ros();
+        MpcPathFollowerRos();
         /**
          * @brief  Destructor for the wrapper
          */
-        ~Mpc_Path_Follower_Ros();
+        ~MpcPathFollowerRos();
         /**
          * @brief  Constructs the ros wrapper
          * @param name The name to give this instance of the trajectory planner
@@ -127,7 +127,7 @@ namespace mpc_local_planner {
         base_local_planner::LocalPlannerUtil planner_util_;
 
         Eigen::Vector3f vel;
-        const float  DT;
+        float  DT;
         MPC_Path_Follower mpc_solver;
 
     };

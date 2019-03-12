@@ -1,5 +1,5 @@
 /*********************************************************************
- * @file:   mpc_path_follower_ros.cpp
+ * @file:   MpcPathFollowerRos.cpp
  * @author: Lianchuan Zhang
  * @date:   2019.01.16
  * @version:1.0.1
@@ -8,15 +8,18 @@
 
 #include <mpc_path_follower/mpc_path_follower_ros.h>
 #include <pluginlib/class_list_macros.h>
+
 //register this planner as a BaseLocalPlanner plugin
-PLUGINLIB_EXPORT_CLASS(mpc_local_planner::Mpc_Path_Follower_Ros, nav_core::BaseLocalPlanner)
-namespace mpc_local_planner{
-    Mpc_Path_Follower_Ros::Mpc_Path_Follower_Ros():initialized_(false),
-        odom_helper_("odom"), setup_(false), DT(0.2){
+PLUGINLIB_EXPORT_CLASS(mpc_path_follower::MpcPathFollowerRos, nav_core::BaseLocalPlanner)
+
+
+namespace mpc_path_follower {
+    MpcPathFollowerRos::MpcPathFollowerRos():initialized_(false),
+        odom_helper_("odom"), setup_(false){
 
     }
 
-    void Mpc_Path_Follower_Ros::initialize(std::__cxx11::string name,
+    void MpcPathFollowerRos::initialize(std::string name,
                                            tf::TransformListener *tf,
                                            costmap_2d::Costmap2DROS *costmap_ros)
     {
@@ -24,13 +27,13 @@ namespace mpc_local_planner{
 
             ros::NodeHandle private_nh("~/" + name);
             ros::NodeHandle nh;
-            g_plan_sub = nh.subscribe("global_plan", 1, &Mpc_Path_Follower_Ros::global_path_CB, this);
-            //g_plan_sub = nh.subscribe("/control/speed", 1, &Mpc_Path_Follower_Ros::global_path_CB, this);
+            g_plan_sub = nh.subscribe("global_plan", 1, &MpcPathFollowerRos::global_path_CB, this);
+            //g_plan_sub = nh.subscribe("/control/speed", 1, &MpcPathFollowerRos::global_path_CB, this);
             l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
             tf_ = tf;
             costmap_ros_ = costmap_ros;
             costmap_ros_->getRobotPose(current_pose_);
-
+            DT = 0.2;
             // make sure to update the costmap we'll use for this cycle
             costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 
@@ -46,7 +49,7 @@ namespace mpc_local_planner{
         }
     }
 
-    bool Mpc_Path_Follower_Ros::computeVelocityCommands(geometry_msgs::Twist &cmd_vel){
+    bool MpcPathFollowerRos::computeVelocityCommands(geometry_msgs::Twist &cmd_vel){
 
         if ( ! costmap_ros_->getRobotPose(current_pose_)) {
             ROS_ERROR("Could not get robot pose");
@@ -88,7 +91,7 @@ namespace mpc_local_planner{
         }
     }
 
-    bool Mpc_Path_Follower_Ros::mpcComputeVelocityCommands(std::vector<geometry_msgs::PoseStamped> &path, geometry_msgs::Twist &cmd_vel){
+    bool MpcPathFollowerRos::mpcComputeVelocityCommands(std::vector<geometry_msgs::PoseStamped> &path, geometry_msgs::Twist &cmd_vel){
 
         tf::Stamped<tf::Pose> robot_vel;
         odom_helper_.getRobotVel(robot_vel);
@@ -160,7 +163,7 @@ namespace mpc_local_planner{
         return true;
     }
 
-    bool Mpc_Path_Follower_Ros::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan){
+    bool MpcPathFollowerRos::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan){
         if(!initialized_){
             ROS_ERROR("Planner utils have not been initialized, please call initialize() first");
             return false;
@@ -174,7 +177,7 @@ namespace mpc_local_planner{
         return true;
     }
 
-    void Mpc_Path_Follower_Ros::global_path_CB(const nav_msgs::Path& path){
+    void MpcPathFollowerRos::global_path_CB(const nav_msgs::Path& path){
 //        if(path.poses.empty())
 //            return;
 //        std::vector<geometry_msgs::PoseStamped> original_plan;
@@ -185,7 +188,7 @@ namespace mpc_local_planner{
 //        setPlan(original_plan);
     }
 
-    bool Mpc_Path_Follower_Ros::isGoalReached(){
+    bool MpcPathFollowerRos::isGoalReached(){
         if (! isInitialized()) {
             ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
             return false;
@@ -203,7 +206,7 @@ namespace mpc_local_planner{
         }
     }
 
-    double Mpc_Path_Follower_Ros::polyeval(Eigen::VectorXd coeffs, double x){
+    double MpcPathFollowerRos::polyeval(Eigen::VectorXd coeffs, double x){
         double result = 0.0;
         for (int i = 0; i < coeffs.size(); i++) {
             result += coeffs[i] * pow(x, i);
@@ -211,7 +214,7 @@ namespace mpc_local_planner{
         return result;
     }
 
-    Eigen::VectorXd Mpc_Path_Follower_Ros::polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
+    Eigen::VectorXd MpcPathFollowerRos::polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
                                                    int order){
         assert(xvals.size() == yvals.size());
         assert(order >= 1 && order <= xvals.size() - 1);
@@ -231,12 +234,11 @@ namespace mpc_local_planner{
         return result;
     }
 
-    void Mpc_Path_Follower_Ros::publishLocalPlan(std::vector<geometry_msgs::PoseStamped>& path) {
+    void MpcPathFollowerRos::publishLocalPlan(std::vector<geometry_msgs::PoseStamped>& path) {
         base_local_planner::publishPlan(path, l_plan_pub_);
     }
 
-
-    void Mpc_Path_Follower_Ros::publishGlobalPlan(std::vector<geometry_msgs::PoseStamped>& path) {
+    void MpcPathFollowerRos::publishGlobalPlan(std::vector<geometry_msgs::PoseStamped>& path) {
         base_local_planner::publishPlan(path, g_plan_pub_);
     }
 };
