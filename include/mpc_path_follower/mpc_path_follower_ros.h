@@ -29,7 +29,7 @@ namespace mpc_path_follower {
         /**
          * @brief  Destructor for the wrapper
          */
-        ~MpcPathFollowerRos();
+        ~MpcPathFollowerRos()= default;
         /**
          * @brief  Constructs the ros wrapper
          * @param name The name to give this instance of the trajectory planner

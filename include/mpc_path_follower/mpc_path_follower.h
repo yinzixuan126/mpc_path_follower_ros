@@ -138,10 +138,10 @@ public:
 class MPC_Path_Follower{
 public:
     typedef CPPAD_TESTVECTOR(double) Dvector;
-    MPC_Path_Follower();
+    MPC_Path_Follower() = default;
     void initialize();
     std::vector<double> solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
-    ~MPC_Path_Follower();
+    ~MPC_Path_Follower() = default;
 
 private:
     size_t i;
