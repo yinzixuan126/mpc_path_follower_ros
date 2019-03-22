@@ -37,6 +37,8 @@ namespace mpc_path_follower {
             // make sure to update the costmap we'll use for this cycle
             costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 
+            planner_util_.initialize(tf, costmap, costmap_ros_->getGlobalFrameID());
+
             if( private_nh.getParam( "odom_topic", odom_topic_ ))
             {
                 odom_helper_.setOdomTopic( odom_topic_ );
@@ -57,7 +59,7 @@ namespace mpc_path_follower {
         }
         std::vector<geometry_msgs::PoseStamped> transformed_plan;
         if ( ! planner_util_.getLocalPlan(current_pose_, transformed_plan)) {
-            ROS_ERROR("Could not get local plan");
+            ROS_ERROR("MPC Could not get local plan");
             return false;
         }
 
@@ -66,7 +68,7 @@ namespace mpc_path_follower {
             ROS_WARN_NAMED("mpc_local_planner", "Received an empty transformed plan.");
             return false;
         }
-        ROS_DEBUG_NAMED("mpc_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
+        ROS_FATAL_NAMED("mpc_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
 
         if (isGoalReached())
         {
@@ -79,13 +81,14 @@ namespace mpc_path_follower {
             bool isOk = mpcComputeVelocityCommands(transformed_plan, cmd_vel);
             if (isOk)
             {
-                publishGlobalPlan(transformed_plan);
+                //ROS_ERROR("isOk is %d", isOk);
+                //publishGlobalPlan(transformed_plan);
             }
             else
             {
                 ROS_WARN_NAMED("mpc_local_planner", "mpc planner failed to produce path.");
                 std::vector<geometry_msgs::PoseStamped> empty_plan;
-                publishGlobalPlan(empty_plan);
+                //publishGlobalPlan(empty_plan);
             }
             return isOk;
         }
@@ -104,23 +107,30 @@ namespace mpc_path_follower {
         std::vector<geometry_msgs::PoseStamped>::iterator it = path.begin();
         std::vector<geometry_msgs::PoseStamped>::iterator it_end = path.begin();
         //choose 40 points to use mpc controller
-        if(path.size() >= 40){
-            it_end = it + 40;
+        if(path.size() >= 70){
+            it_end = it + 70;
         } else {
             it_end = path.end();
         }
-        while(it != it_end){
+
+        //for (auto iter = it; iter <= it_end; iter += 10){
+        while (it <= it_end){
             const geometry_msgs::PoseStamped& w = *it;
             waypoints_x.push_back(w.pose.position.x);
             waypoints_y.push_back(w.pose.position.y);
+            it = it + 10;
         }
-
+        //std::cout<<"waypoints x size is"<<waypoints_x.size()<<std::endl;
+        //std::cout<<"waypoints y size is"<<waypoints_y.size()<<std::endl;
         double* ptrx = &waypoints_x[0];
         double* ptry = &waypoints_y[0];
         Eigen::Map<Eigen::VectorXd> waypoints_x_eig(ptrx, 6);
         Eigen::Map<Eigen::VectorXd> waypoints_y_eig(ptry, 6);
+        //std::cout<<"waypoints x eig is"<<waypoints_x_eig<<std::endl;
+        //std::cout<<"waypoints y eig is"<<waypoints_y_eig<<std::endl;
         // calculate cte and epsi
         auto coeffs = polyfit(waypoints_x_eig, waypoints_y_eig, 3);
+        //std::cout<<"coeffs is "<<coeffs<<std::endl;
         // The cross track error is calculated by evaluating at polynomial at x, f(x)
         // and subtracting y.
         //double cte = polyeval(coeffs, x) - y;
@@ -150,15 +160,17 @@ namespace mpc_path_follower {
         double steer_value = 0.0, throttle_value = 0.0;
         steer_value = vars[0];
         throttle_value = vars[1];
+        ROS_INFO("Steer value and throttle value is, %.3lf , %.3lf", steer_value, throttle_value);
         //temporarily, cannot tranfer to cmd_vel using acceleration and steering angle
         //so assume constant velocity 0.3m/s to tranfer to cmd_vel;
         cmd_vel.linear.x = vel[0] + vars[1] * DT;
+        cmd_vel.linear.x = std::max(0.2, cmd_vel.linear.x);
         double radius = 0.0;
         if (fabs(tan(steer_value)) <= 1e2){
             radius = 1e5;
         } else {
-            radius = 3.0 / tan(steer_value);}
-        cmd_vel.angular.z = cmd_vel.linear.x / radius;
+            radius = 0.5 / tan(steer_value);}
+        cmd_vel.angular.z = std::min(-0.1, std::max(0.1, (cmd_vel.linear.x / radius)));
         //cmd_vel.linear.x = 0.3;
         return true;
     }
@@ -168,13 +180,11 @@ namespace mpc_path_follower {
             ROS_ERROR("Planner utils have not been initialized, please call initialize() first");
             return false;
         }
+        //when we get a new plan, we also want to clear any latch we may have on goal tolerances
+        latchedStopRotateController_.resetLatching();
 
-        //reset the global plan
-        global_plan_.clear();
-        ROS_INFO("Got new plan");
-        global_plan_ = orig_global_plan;
-
-        return true;
+        //oscillation_costs_.resetOscillationFlags();
+        return planner_util_.setPlan(orig_global_plan);
     }
 
     void MpcPathFollowerRos::global_path_CB(const nav_msgs::Path& path){

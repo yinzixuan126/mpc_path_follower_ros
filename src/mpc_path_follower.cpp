@@ -9,6 +9,8 @@
 #include <mpc_path_follower/mpc_path_follower.h>
 
 void MPC_Path_Follower::initialize(){
+
+    int i = 0;
 }
 
 std::vector<double> MPC_Path_Follower::solve(Eigen::VectorXd state, Eigen::VectorXd coeffs){
