@@ -30,6 +30,8 @@ namespace mpc_path_follower {
             g_plan_sub = nh.subscribe("global_plan", 1, &MpcPathFollowerRos::global_path_CB, this);
             //g_plan_sub = nh.subscribe("/control/speed", 1, &MpcPathFollowerRos::global_path_CB, this);
             l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
+            _pub_odompath  = nh.advertise<nav_msgs::Path>("/mpc_reference", 1); // reference path for MPC
+            _pub_mpctraj   = nh.advertise<nav_msgs::Path>("/mpc_trajectory", 1);// MPC trajectory output
             tf_ = tf;
             costmap_ros_ = costmap_ros;
             costmap_ros_->getRobotPose(current_pose_);
@@ -68,7 +70,7 @@ namespace mpc_path_follower {
             ROS_WARN_NAMED("mpc_local_planner", "Received an empty transformed plan.");
             return false;
         }
-        ROS_FATAL_NAMED("mpc_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
+        ROS_FATAL_NAMED("mpc_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size()) ;
 
         if (isGoalReached())
         {
@@ -102,6 +104,40 @@ namespace mpc_path_follower {
                             robot_vel.getOrigin().getY(), tf::getYaw(robot_vel.getRotation()));
 
 
+        /*// Update system states: X=[x, y, psi, v]
+        const double px = robot_vel.getOrigin().x(); //pose: odom frame
+        const double py = robot_vel.getOrigin().y();
+        //const double psi = tf::getYaw(robot_vel.getRotation());
+        const double psi = vel[2];
+        const double v = vel[0]; //twist: body fixed frame
+
+
+        // Waypoints related parameters
+        const int N = path.size(); // Number of waypoints
+        const double cospsi = cos(psi);
+        const double sinpsi = sin(psi);
+
+        // Convert to the vehicle coordinate system
+        VectorXd x_veh(N);
+        VectorXd y_veh(N);
+        for(int i = 0; i < N; i++)
+        {
+            const double dx = path[i].pose.position.x - px;
+            const double dy = path[i].pose.position.y - py;
+            x_veh[i] = dx * cospsi + dy * sinpsi;
+            y_veh[i] = dy * cospsi - dx * sinpsi;
+        }
+
+        // Fit waypoints
+        auto coeffs = polyfit(x_veh, y_veh, 3);
+
+        const double cte  = polyeval(coeffs, 0.0);
+        const double epsi = atan(coeffs[1]);
+        VectorXd state(6);*/
+
+
+
+
         std::vector<double> waypoints_x;
         std::vector<double> waypoints_y;
         std::vector<geometry_msgs::PoseStamped>::iterator it = path.begin();
@@ -120,6 +156,25 @@ namespace mpc_path_follower {
             waypoints_y.push_back(w.pose.position.y);
             it = it + 10;
         }
+
+
+        // Display the MPC referenced trajectory
+        nav_msgs::Path _mpc_ref_traj;
+        _mpc_ref_traj.header.frame_id = "base_link"; // points in car coordinate
+        _mpc_ref_traj.header.stamp = ros::Time::now();
+        for(int i=0; i<waypoints_x.size(); i++)
+        {
+            geometry_msgs::PoseStamped tempPose;
+            tempPose.header = _mpc_ref_traj.header;
+            tempPose.pose.position.x = waypoints_x[i];
+            tempPose.pose.position.y = waypoints_y[i];
+            tempPose.pose.orientation.w = 1.0;
+            _mpc_ref_traj.poses.push_back(tempPose);
+        }
+        // publish the mpc ref trajectory
+        _pub_odompath.publish(_mpc_ref_traj);
+
+
         //std::cout<<"waypoints x size is"<<waypoints_x.size()<<std::endl;
         //std::cout<<"waypoints y size is"<<waypoints_y.size()<<std::endl;
         double* ptrx = &waypoints_x[0];
@@ -157,10 +212,27 @@ namespace mpc_path_follower {
             mpc_y_vals.push_back(vars[i]);
           }
         }
+
+        // Display the MPC predicted trajectory
+        nav_msgs::Path _mpc_traj;
+        _mpc_traj.header.frame_id = "base_link"; // points in car coordinate
+        _mpc_traj.header.stamp = ros::Time::now();
+        for(int i=0; i<mpc_x_vals.size(); i++)
+        {
+            geometry_msgs::PoseStamped tempPose;
+            tempPose.header = _mpc_traj.header;
+            tempPose.pose.position.x = mpc_x_vals[i];
+            tempPose.pose.position.y = mpc_y_vals[i];
+            tempPose.pose.orientation.w = 1.0;
+            _mpc_traj.poses.push_back(tempPose);
+        }
+        // publish the mpc trajectory
+        _pub_mpctraj.publish(_mpc_traj);
+
         double steer_value = 0.0, throttle_value = 0.0;
         steer_value = vars[0];
         throttle_value = vars[1];
-        ROS_INFO("Steer value and throttle value is, %.3lf , %.3lf", steer_value, throttle_value);
+        ROS_INFO("Steer value and throttle value is, %lf , %lf", steer_value, throttle_value);
         //temporarily, cannot tranfer to cmd_vel using acceleration and steering angle
         //so assume constant velocity 0.3m/s to tranfer to cmd_vel;
         cmd_vel.linear.x = vel[0] + vars[1] * DT;
@@ -170,8 +242,9 @@ namespace mpc_path_follower {
             radius = 1e5;
         } else {
             radius = 0.5 / tan(steer_value);}
-        cmd_vel.angular.z = std::min(-0.1, std::max(0.1, (cmd_vel.linear.x / radius)));
-        //cmd_vel.linear.x = 0.3;
+        cmd_vel.angular.z = std::max(-0.2, std::min(0.2, (cmd_vel.linear.x / radius)));
+        ROS_INFO("v value and z value is, %lf , %lf", cmd_vel.linear.x, cmd_vel.angular.z);
+        //cmd_vel.linear.x = 0.0;
         return true;
     }
 
@@ -182,6 +255,59 @@ namespace mpc_path_follower {
         }
         //when we get a new plan, we also want to clear any latch we may have on goal tolerances
         latchedStopRotateController_.resetLatching();
+
+        //for testing
+        temp_original_plan.clear();
+        temp_original_plan = orig_global_plan;
+//        if(_waypointsDist <=0.0)
+//        {
+//            double dx = pathMsg->poses[1].pose.position.x - pathMsg->poses[0].pose.position.x;
+//            double dy = pathMsg->poses[1].pose.position.y - pathMsg->poses[0].pose.position.y;
+//            _waypointsDist = sqrt(dx*dx + dy*dy);
+//            _downSampling = int(_pathLength/10.0/_waypointsDist);
+//        }
+
+        int sampling = 10;
+        // Cut and downsampling the path
+        for(int i =0; i< temp_original_plan.size(); i++)
+        {
+            geometry_msgs::PoseStamped tempPose;
+            //_tf_listener.transformPose("odom", ros::Time(0) , temp_original_plan[i].pose, "map", tempPose);
+            temp_transformed_plan.push_back(tempPose);
+            sampling = sampling + 1;
+        }
+
+        nav_msgs::Odometry odom;
+        odom_helper_.getOdom(odom);
+
+        // Update system states: X=[x, y, psi, v]
+        const double px = odom.pose.pose.position.x; //pose: odom frame
+        const double py = odom.pose.pose.position.y;
+        tf::Pose pose;
+        tf::poseMsgToTF(odom.pose.pose, pose);
+        const double psi = tf::getYaw(pose.getRotation());
+        const double v = odom.twist.twist.linear.x; //twist: body fixed frame
+
+
+        // Waypoints related parameters
+        const int N = temp_transformed_plan.size(); // Number of waypoints
+        const double cospsi = cos(psi);
+        const double sinpsi = sin(psi);
+        float x_veh = 0.0, y_veh = 0.0;
+        // Convert to the vehicle coordinate system
+        final_transfromed_plan.clear();
+        for(int i = 0; i < N; i++)
+        {
+            const double dx = temp_transformed_plan[i].pose.position.x - px;
+            const double dy = temp_transformed_plan[i].pose.position.y - py;
+            x_veh = dx * cospsi + dy * sinpsi;
+            y_veh = dy * cospsi - dx * sinpsi;
+            geometry_msgs::PoseStamped tempPose1;
+            tempPose1.pose.position.x = x_veh;
+            tempPose1.pose.position.y = y_veh;
+            final_transfromed_plan.push_back(tempPose1);
+        }
+
 
         //oscillation_costs_.resetOscillationFlags();
         return planner_util_.setPlan(orig_global_plan);
