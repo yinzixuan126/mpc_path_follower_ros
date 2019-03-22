@@ -18,11 +18,13 @@
 #include "Eigen-3.3/Eigen/QR"
 
 using CppAD::AD;
-size_t N = 10; //timesteps
+size_t N = 40; //timesteps
 // This is the length from front to CoG that has a similar radius.
-const double Lf = 2.67;
+//const double Lf = 2.67;
+const double Lf = 0.5;
 double dt = 0.1; //frequency
-double ref_v = 70; //refence_velocity
+//double ref_v = 70; //refence_velocity
+double ref_v = 0.5; //refence_velocity
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
 // when one variable starts and another ends to make our lifes easier.
@@ -123,7 +125,7 @@ public:
           //!!!!!!!!!!there some changes on psi and epsi
           fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
           fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-          fg[1 + psi_start + t] = psi1 - (psi0 - v0 * delta0 / Lf * dt);//这个地方可能是符号的问题
+          fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 / Lf * dt);//这个地方可能是符号的问题
           fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
           fg[1 + cte_start + t] =
               cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));

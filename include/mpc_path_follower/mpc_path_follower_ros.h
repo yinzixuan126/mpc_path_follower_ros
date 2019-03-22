@@ -103,10 +103,13 @@ namespace mpc_path_follower {
         void global_path_CB(const nav_msgs::Path& path);
 
         tf::TransformListener* tf_; ///< @brief Used for transforming point clouds
+        tf::TransformListener _tf_listener;
 
         // for visualisation, publishers of global and local plan
         ros::Publisher g_plan_pub_, l_plan_pub_, vel_pub_;
         ros::Subscriber g_plan_sub, odom_sub;
+
+        ros::Publisher _pub_odompath, _pub_mpctraj;
 
         costmap_2d::Costmap2DROS* costmap_ros_;
 
@@ -129,6 +132,8 @@ namespace mpc_path_follower {
         Eigen::Vector3f vel;
         float  DT;
         MPC_Path_Follower mpc_solver;
+
+        std::vector<geometry_msgs::PoseStamped> temp_original_plan, temp_transformed_plan, final_transfromed_plan;
 
     };
 };
