@@ -118,6 +118,7 @@ namespace mpc_path_follower {
         tf::Stamped<tf::Pose> current_pose_;
 
         bool initialized_;
+        bool debug_;
 
         base_local_planner::OdometryHelperRos odom_helper_;
 

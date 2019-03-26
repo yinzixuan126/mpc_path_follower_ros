@@ -1,0 +1,9 @@
+<launch>
+      <!--  ************** MPC Node **************  -->
+    <node name="MPC_Node" pkg="hypharos_minicar" type="MPC_Node" output="screen"  >
+        <rosparam file="$(find mpc_path_follower)/launch/mpc_params.yaml" command="load" />
+        <!-- <remap from="cmd_vel" to="/mobile_base/commands/velocity"/> -->
+        <remap from="cmd_vel" to="fake/mobile_base/commands/velocity"/>
+    </node> 
+
+</launch>
