@@ -18,24 +18,24 @@
 #include "Eigen-3.3/Eigen/QR"
 
 using CppAD::AD;
-size_t N = 40; //timesteps
+size_t N = 20; //timesteps
 // This is the length from front to CoG that has a similar radius.
 //const double Lf = 2.67;
-const double Lf = 0.5;
+const double Lf = 0.23;
 double dt = 0.1; //frequency
 //double ref_v = 70; //refence_velocity
 double ref_v = 0.5; //refence_velocity
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
 // when one variable starts and another ends to make our lifes easier.
-size_t x_start;
-size_t y_start;
-size_t psi_start;
-size_t v_start;
-size_t cte_start;
-size_t epsi_start;
-size_t delta_start;// steering angle
-size_t a_start;// acceleration
+size_t x_start = 0;
+size_t y_start = x_start + N;
+size_t psi_start = y_start + N;
+size_t v_start = psi_start + N;
+size_t cte_start = v_start + N;
+size_t epsi_start = cte_start + N;
+size_t delta_start = epsi_start + N;
+size_t a_start = delta_start + N - 1;
 
 //class that computes objective and constraints
 class FG_eval{
@@ -53,22 +53,22 @@ public:
         // TODO: Define the cost related the reference state and
         // any anything you think may be beneficial.
         for (int t = 0; t < N; t++) {
-          fg[0] += 3000*CppAD::pow(vars[cte_start + t], 2);
-          fg[0] += 3000*CppAD::pow(vars[epsi_start + t], 2);
-          fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+          fg[0] += 100*CppAD::pow(vars[cte_start + t], 2);
+          fg[0] += 100*CppAD::pow(vars[epsi_start + t], 2);
+          fg[0] += 100*CppAD::pow(vars[v_start + t] - ref_v, 2);
         }
 
         // Minimize the use of actuators.
         for (int t = 0; t < N - 1; t++) {
-          fg[0] += 5*CppAD::pow(vars[delta_start + t], 2);
-          fg[0] += 5*CppAD::pow(vars[a_start + t], 2);
+          fg[0] += 100*CppAD::pow(vars[delta_start + t], 2);
+          fg[0] += 50*CppAD::pow(vars[a_start + t], 2);
           // try adding penalty for speed + steer
-          fg[0] += 700*CppAD::pow(vars[delta_start + t] * vars[v_start+t], 2);
+          //fg[0] += 700*CppAD::pow(vars[delta_start + t] * vars[v_start+t], 2);
         }
         // Minimize the value gap between sequential actuations.
         for (int t = 0; t < N - 2; t++) {
-          fg[0] += 200*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-          fg[0] += 10*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
+          fg[0] += 0*CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+          fg[0] += 0*CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
         }
         // Setup Constraints
         // Initial constraints
@@ -242,7 +242,7 @@ public:
         ok &= solution.status == CppAD::ipopt::solve_result<Dvector>::success;
 
         auto cost = solution.obj_value;
-
+        result.clear();
         result.push_back(solution.x[delta_start]);
         result.push_back(solution.x[a_start]);
 

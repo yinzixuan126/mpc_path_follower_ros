@@ -109,7 +109,7 @@ namespace mpc_path_follower {
         ros::Publisher g_plan_pub_, l_plan_pub_, vel_pub_;
         ros::Subscriber g_plan_sub, odom_sub;
 
-        ros::Publisher _pub_odompath, _pub_mpctraj;
+        ros::Publisher _pub_odompath, _pub_mpctraj, _pub_vehicle_reftraj;
 
         costmap_2d::Costmap2DROS* costmap_ros_;
 
@@ -132,6 +132,7 @@ namespace mpc_path_follower {
 
         Eigen::Vector3f vel;
         float  DT;
+        float pathLength_;
         MPC_Path_Follower mpc_solver;
 
         std::vector<geometry_msgs::PoseStamped> temp_original_plan, temp_transformed_plan, final_transfromed_plan;

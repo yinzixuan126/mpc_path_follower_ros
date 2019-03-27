@@ -4,6 +4,8 @@
         <rosparam file="$(find mpc_path_follower)/launch/mpc_params.yaml" command="load" />
         <!-- <remap from="cmd_vel" to="/mobile_base/commands/velocity"/> -->
         <remap from="cmd_vel" to="fake/mobile_base/commands/velocity"/>
+        <remap from="/move_base/TrajectoryPlannerROS/global_plan" to="/move_base/NavfnROS/plan" />
+
     </node> 
 
 </launch>

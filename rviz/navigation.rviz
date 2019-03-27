@@ -11,6 +11,8 @@ Panels:
         - /Local Map1/Planner1
         - /mpc_ref_path1
         - /mpc_pre_path1
+        - /mpc_ref_path11
+        - /mpc_pre_path21
       Splitter Ratio: 0.5
     Tree Height: 772
   - Class: rviz/Selection
@@ -538,6 +540,52 @@ Visualization Manager:
       Topic: /mpc_trajectory
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 85; 255; 127
+      Enabled: true
+      Head Diameter: 0.300000012
+      Head Length: 0.200000003
+      Length: 0.300000012
+      Line Style: Lines
+      Line Width: 0.0299999993
+      Name: mpc_ref_path1
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.0299999993
+      Shaft Diameter: 0.100000001
+      Shaft Length: 0.100000001
+      Topic: /mpc_reference1
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 255; 255; 0
+      Enabled: true
+      Head Diameter: 0.300000012
+      Head Length: 0.200000003
+      Length: 0.300000012
+      Line Style: Lines
+      Line Width: 0.0299999993
+      Name: mpc_pre_path2
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.0299999993
+      Shaft Diameter: 0.100000001
+      Shaft Length: 0.100000001
+      Topic: /mpc_trajectory1
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -571,7 +619,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 73.7666092
+      Scale: 125.943245
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
       X: -0.391378343

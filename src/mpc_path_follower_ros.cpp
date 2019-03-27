@@ -15,7 +15,7 @@ PLUGINLIB_EXPORT_CLASS(mpc_path_follower::MpcPathFollowerRos, nav_core::BaseLoca
 
 namespace mpc_path_follower {
     MpcPathFollowerRos::MpcPathFollowerRos():initialized_(false),
-        odom_helper_("odom"), setup_(false), debug_(false){
+        odom_helper_("odom"), setup_(false), debug_(true){
 
     }
 
@@ -27,11 +27,14 @@ namespace mpc_path_follower {
 
             ros::NodeHandle private_nh("~/" + name);
             ros::NodeHandle nh;
+            nh.param<bool>("debug", debug_, true);
+            nh.param<float>("path_length", pathLength_, 8.0); // unit: m
             g_plan_sub = nh.subscribe("global_plan", 1, &MpcPathFollowerRos::global_path_CB, this);
             //g_plan_sub = nh.subscribe("/control/speed", 1, &MpcPathFollowerRos::global_path_CB, this);
             l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
-            _pub_odompath  = nh.advertise<nav_msgs::Path>("/mpc_reference", 1); // reference path for MPC
-            _pub_mpctraj   = nh.advertise<nav_msgs::Path>("/mpc_trajectory", 1);// MPC trajectory output
+            _pub_odompath  = nh.advertise<nav_msgs::Path>("/mpc_reference1", 1); // reference path for MPC
+            _pub_mpctraj   = nh.advertise<nav_msgs::Path>("/mpc_trajectory1", 1);// MPC trajectory output
+            _pub_vehicle_reftraj   = nh.advertise<nav_msgs::Path>("/vehicle_reftrajectory1", 1);// MPC trajectory output
             tf_ = tf;
             costmap_ros_ = costmap_ros;
             costmap_ros_->getRobotPose(current_pose_);
@@ -131,13 +134,22 @@ namespace mpc_path_follower {
         x_veh.clear();
         y_veh.clear();
 
+        nav_msgs::Path _vehicle_ref_traj;
+        _vehicle_ref_traj.header.frame_id = "base_link"; // points in car coordinate
+        _vehicle_ref_traj.header.stamp = ros::Time::now();
         for(int i = 0; i < path.size(); i++)
         {
             double dx = path.at(i).pose.position.x - px;
             double dy = path.at(i).pose.position.y - py;
             x_veh.push_back( dx * cospsi + dy * sinpsi);
             y_veh.push_back( dy * cospsi - dx * sinpsi);
+            geometry_msgs::PoseStamped tempPose;
+            tempPose.header = _mpc_ref_traj.header;
+            tempPose.pose.position.x = dx * cospsi + dy * sinpsi;
+            tempPose.pose.position.y = dy * cospsi - dx * sinpsi;
+            _vehicle_ref_traj.poses.push_back(tempPose);
         }
+        _pub_vehicle_reftraj.publish(_vehicle_ref_traj);
         std::vector<double> waypoints_x;
         std::vector<double> waypoints_y;
         waypoints_x.clear();
@@ -160,8 +172,8 @@ namespace mpc_path_follower {
         Due to the sign starting at 0, the orientation error is -f'(x).
         derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
         double epsi = psi - atan(coeffs[1]);*/
-        double cte = polyeval(coeffs, 0);  // px = 0, py = 0
-        double epsi = -atan(coeffs[1]);  // p
+        double cte = polyeval(coeffs, 0);
+        double epsi = atan(coeffs[1]);
         if (debug_){
             std::cout<<"psi is"<<std::endl;
             std::cout<<"path size is"<<path.size()<<std::endl;
@@ -172,29 +184,37 @@ namespace mpc_path_follower {
             std::cout<<"epsi is"<<epsi<<std::endl;
         }
         Eigen::VectorXd state(6);
+        double dt = 0.1;
+
         state << 0, 0, 0, vel[0], cte, epsi;
         std::vector<double> vars;
-        mpc_solver.initialize();
+        vars.clear();
+        //mpc_solver.initialize();
         vars = mpc_solver.solve(state, coeffs);
         if (vars.size() < 2){
             return false;
         }
         std::vector<double> mpc_x_vals;
         std::vector<double> mpc_y_vals;
+        mpc_x_vals.clear();
+        mpc_y_vals.clear();
+        std::cout<<"vars size is"<<vars.size()<<std::endl;
         for (int i = 2; i < vars.size(); i ++) {
           if (i%2 == 0) {
             mpc_x_vals.push_back(vars[i]);
+            //std::cout<<"mpc x vals is "<<vars[i]<<std::endl;
           }
           else {
             mpc_y_vals.push_back(vars[i]);
           }
         }
-
+        //std::cout<<"****************************************"<<std::endl;
         // Display the MPC predicted trajectory
         nav_msgs::Path _mpc_traj;
+        //_mpc_traj.poses.clear();
         _mpc_traj.header.frame_id = "base_link"; // points in car coordinate
         _mpc_traj.header.stamp = ros::Time::now();
-        for(int i = 0; i < mpc_x_vals.size(); i++)
+        for(int i = 2; i < mpc_x_vals.size() - 3; i++)
         {
             geometry_msgs::PoseStamped tempPose;
             tempPose.header = _mpc_traj.header;
@@ -204,8 +224,9 @@ namespace mpc_path_follower {
             _mpc_traj.poses.push_back(tempPose);
         }
         // publish the mpc trajectory
-        _pub_mpctraj.publish(_mpc_traj);
 
+        _pub_mpctraj.publish(_mpc_traj);
+        ROS_INFO("I am publishing mcp trak");
         double steer_value = 0.0, throttle_value = 0.0;
         steer_value = vars[0];
         throttle_value = vars[1];
@@ -218,7 +239,7 @@ namespace mpc_path_follower {
         } else {
             radius = 0.5 / tan(steer_value);}
         cmd_vel.angular.z = std::max(-0.2, std::min(0.2, (cmd_vel.linear.x / radius)));
-        ROS_INFO("v value and z value is, %lf , %lf", cmd_vel.linear.x, cmd_vel.angular.z);
+        //ROS_INFO("v value and z value is, %lf , %lf", cmd_vel.linear.x, cmd_vel.angular.z);
         //cmd_vel.linear.x = 0.0;
         return true;
     }
@@ -235,14 +256,14 @@ namespace mpc_path_follower {
     }
 
     void MpcPathFollowerRos::global_path_CB(const nav_msgs::Path& path){
-//        if(path.poses.empty())
-//            return;
-//        std::vector<geometry_msgs::PoseStamped> original_plan;
-//        // Extract the plan in world co-ordinates, we assume the path is all in the same frame
-//        for(unsigned int i=0; i < path.poses.size(); i++){
-//            original_plan[i] = path.poses[i];
-//        }
-//        setPlan(original_plan);
+        /*if(path.poses.empty())
+            return;
+        std::vector<geometry_msgs::PoseStamped> original_plan;
+        // Extract the plan in world co-ordinates, we assume the path is all in the same frame
+        for(unsigned int i=0; i < path.poses.size(); i++){
+            original_plan[i] = path.poses[i];
+        }
+        setPlan(original_plan);*/
     }
 
     bool MpcPathFollowerRos::isGoalReached(){
