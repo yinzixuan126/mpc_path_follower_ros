@@ -134,6 +134,7 @@ namespace mpc_path_follower {
         float  DT;
         float pathLength_;
         MPC_Path_Follower mpc_solver;
+        bool _is_close_enough;
 
         std::vector<geometry_msgs::PoseStamped> temp_original_plan, temp_transformed_plan, final_transfromed_plan;
 

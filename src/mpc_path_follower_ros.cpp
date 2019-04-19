@@ -15,7 +15,7 @@ PLUGINLIB_EXPORT_CLASS(mpc_path_follower::MpcPathFollowerRos, nav_core::BaseLoca
 
 namespace mpc_path_follower {
     MpcPathFollowerRos::MpcPathFollowerRos():initialized_(false),
-        odom_helper_("odom"), setup_(false), debug_(true){
+        odom_helper_("odom"), setup_(false), debug_(true), _is_close_enough(false){
 
     }
 
@@ -122,7 +122,6 @@ namespace mpc_path_follower {
         odom_helper_.getOdom(odom);
         double px = odom.pose.pose.position.x; //pose: odom frame
         double py = odom.pose.pose.position.y;
-        tf::Pose pose;
         tf::poseMsgToTF(odom.pose.pose, pose);
         double psi = tf::getYaw(pose.getRotation());
         // Waypoints related parameters
@@ -158,12 +157,19 @@ namespace mpc_path_follower {
         while (i < x_veh.size()){
             waypoints_x.push_back(x_veh.at(i));
             waypoints_y.push_back(y_veh.at(i));
-            i = i + 10;
+            i = i + 1;
         }
+        int size_of_path = 0;
+        size_of_path = waypoints_x.size();
+        if (size_of_path <= 6){
+            _is_close_enough = true;
+            return true;
+        }
+        _is_close_enough = false;
         double* ptrx = &waypoints_x[0];
         double* ptry = &waypoints_y[0];
-        Eigen::Map<Eigen::VectorXd> waypoints_x_eig(ptrx, 6);
-        Eigen::Map<Eigen::VectorXd> waypoints_y_eig(ptry, 6);
+        Eigen::Map<Eigen::VectorXd> waypoints_x_eig(ptrx, size_of_path);
+        Eigen::Map<Eigen::VectorXd> waypoints_y_eig(ptry, size_of_path);
         // calculate cte and epsi
         auto coeffs = polyfit(waypoints_x_eig, waypoints_y_eig, 3);        
         /* The cross track error is calculated by evaluating at polynomial at x, f(x)
@@ -198,7 +204,7 @@ namespace mpc_path_follower {
         std::vector<double> mpc_y_vals;
         mpc_x_vals.clear();
         mpc_y_vals.clear();
-        std::cout<<"vars size is"<<vars.size()<<std::endl;
+        //std::cout<<"vars size is"<<vars.size()<<std::endl;
         for (int i = 2; i < vars.size(); i ++) {
           if (i%2 == 0) {
             mpc_x_vals.push_back(vars[i]);
@@ -232,14 +238,15 @@ namespace mpc_path_follower {
         throttle_value = vars[1];
         ROS_INFO("Steer value and throttle value is, %lf , %lf", steer_value, throttle_value);
         cmd_vel.linear.x = vel[0] + vars[1] * DT;
-        cmd_vel.linear.x = std::max(0.2, cmd_vel.linear.x);
+        //cmd_vel.linear.x = std::min(0.5, cmd_vel.linear.x);
         double radius = 0.0;
-        if (fabs(tan(steer_value)) <= 1e2){
+        if (fabs(tan(steer_value)) <= 1e-2){
             radius = 1e5;
         } else {
             radius = 0.5 / tan(steer_value);}
-        cmd_vel.angular.z = std::max(-0.2, std::min(0.2, (cmd_vel.linear.x / radius)));
-        //ROS_INFO("v value and z value is, %lf , %lf", cmd_vel.linear.x, cmd_vel.angular.z);
+        cmd_vel.angular.z = std::max(-1.0, std::min(1.0, (cmd_vel.linear.x / radius)));
+        cmd_vel.linear.x = std::min(0.2, cmd_vel.linear.x);
+        ROS_INFO("v value and z value is, %lf , %lf", cmd_vel.linear.x, cmd_vel.angular.z);
         //cmd_vel.linear.x = 0.0;
         return true;
     }
@@ -252,6 +259,7 @@ namespace mpc_path_follower {
         //when we get a new plan, we also want to clear any latch we may have on goal tolerances
         latchedStopRotateController_.resetLatching();
         //oscillation_costs_.resetOscillationFlags();
+        _is_close_enough = false;
         return planner_util_.setPlan(orig_global_plan);
     }
 
@@ -276,8 +284,8 @@ namespace mpc_path_follower {
             return false;
         }
 
-        if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
-            ROS_INFO("Goal reached");
+        if(_is_close_enough) {
+            ROS_INFO("mpc local controller Goal reached");
             return true;
         } else {
             return false;
