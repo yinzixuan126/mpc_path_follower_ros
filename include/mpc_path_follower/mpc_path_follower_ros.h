@@ -100,16 +100,14 @@ namespace mpc_path_follower {
 
         void publishGlobalPlan(std::vector<geometry_msgs::PoseStamped>& path);
 
-        void global_path_CB(const nav_msgs::Path& path);
-
         tf::TransformListener* tf_; ///< @brief Used for transforming point clouds
         tf::TransformListener _tf_listener;
 
         // for visualisation, publishers of global and local plan
         ros::Publisher g_plan_pub_, l_plan_pub_, vel_pub_;
-        ros::Subscriber g_plan_sub, odom_sub;
+        ros::Subscriber odom_sub;
 
-        ros::Publisher _pub_odompath, _pub_mpctraj, _pub_vehicle_reftraj;
+        ros::Publisher _pub_ref_path_odom, _pub_mpc_traj, _pub_ref_path_baselink;
 
         costmap_2d::Costmap2DROS* costmap_ros_;
 
