@@ -15,8 +15,8 @@ Date: 2019.07.18
 * Nonlinear Bicycle Model Based MPC (through ipopt solver)  
 
 ## References  
-https://github.com/udacity/CarND-MPC-Project
-https://github.com/Hypha-ROS/hypharos_minicar    
+*https://github.com/udacity/CarND-MPC-Project
+*https://github.com/Hypha-ROS/hypharos_minicar    
   
 
 ### Dependency 
