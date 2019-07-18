@@ -1,6 +1,6 @@
 <launch>
   <!-- Map server -->
-  <arg name="map_file" default="$(find turtlebot_gazebo)/maps/will.yaml"/>
+  <arg name="map_file" default="$(find mpc_path_follower)/maps/will.yaml"/>
   <arg name="3d_sensor" default="$(env TURTLEBOT_3D_SENSOR)"/>  <!-- r200, kinect, asus_xtion_pro -->
 
   <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
@@ -18,6 +18,6 @@
   </include>
 
  <!-- Move base -->
- <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
+ <include file="$(find mpc_path_follower)/launch/move_base.launch.xml"/>
 
 </launch>

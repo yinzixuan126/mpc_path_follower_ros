@@ -8,3 +8,5 @@ will
 2018.03.15 fixed cannot load library error! Big V ,will!
 
 2018.03.27 Really big v, Will! you fixed reference path problem and it can really work!
+
+2019.07.18 added nice readme.txt cause lots of users forked
