@@ -26,16 +26,16 @@ $ sudo apt-get install remmina synaptic gimp git ros-kinetic-navigation* ros-kin
 3. Install Ipopt: Please refer (https://github.com/udacity/CarND-MPC-Project/blob/master/install_Ipopt_CppAD.md)  
 4. create your own catkin_ws   
 (http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment#Create_a_ROS_Workspace)  
-$ cd catkin_ws/src  
-$ git clone https://github.com/yinzixuan126/mpc_path_follower_ros   
-$ cd ..  
-$ catkin_make  
+5. cd catkin_ws/src  
+6. git clone https://github.com/yinzixuan126/mpc_path_follower_ros   
+7. cd ..  
+8. catkin_make  
 
 ## Operation
 ### Simulation
-$ roslaunch turtlebot_gazebo turtlebot_world.launch
-$ roslaunch mpc_path_follower mpc_test.launch
-$ roslaunch mpc_path_follower view_navigation.launch
+* roslaunch turtlebot_gazebo turtlebot_world.launch
+* roslaunch mpc_path_follower mpc_test.launch
+* roslaunch mpc_path_follower view_navigation.launch
    
   
 
