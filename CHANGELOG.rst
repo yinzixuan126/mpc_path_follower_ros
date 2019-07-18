@@ -9,4 +9,8 @@ will
 
 2018.03.27 Really big v, Will! you fixed reference path problem and it can really work!
 
+
+2018.04.19 Another big v, Will! you fixed one big bug for command output.
+
 2019.07.18 added nice readme.txt cause lots of users forked
+
