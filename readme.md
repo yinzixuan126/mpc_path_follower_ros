@@ -1,18 +1,17 @@
 # MPC path follower based on ros navigation stack 
 
 ## Abstract
-MPC path follower, Using ros navigation stack, Working with move_base
-not stable version    
+MPC path follower, Using ros navigation stack, Working with move_base, Not stable version    
 
 ## About us 
 Developer:   
 * Will, zhang  
-
 Date: 2019.07.18
  
 
 ## Features
-* Nonlinear Bicycle Model Based MPC (through ipopt solver)  
+* Nonlinear Bicycle Model Based MPC (through ipopt solver) 
+* Based on ros navigation
 
 ## References  
 * https://github.com/udacity/CarND-MPC-Project
