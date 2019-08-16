@@ -1,7 +1,8 @@
 # MPC path follower based on ros navigation stack 
 
 ## Abstract
-MPC path follower, Using ros navigation stack, Working with move_base, Not stable version    
+MPC path follower, Using ros navigation stack, Working with move_base, Not stable version 
+Currently, it only can follow global path with small curve.
 
 ## About us 
 Developer:   
@@ -32,8 +33,11 @@ $ sudo apt-get install remmina synaptic gimp git ros-kinetic-navigation* ros-kin
 
 ## Operation
 ### Simulation
+* ---to launch turtlebot gazebo
 * roslaunch turtlebot_gazebo turtlebot_world.launch
+* ---to launch mpc path follower
 * roslaunch mpc_path_follower mpc_test.launch
+* ---to launch rviz
 * roslaunch mpc_path_follower view_navigation.launch
    
   
